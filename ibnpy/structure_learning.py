@@ -20,7 +20,7 @@ def fit(
         epsilon=1e-4,
         max_iter=1e6,
         root_node=None):
-    """Structure learning fit model.
+    """Online structure learning fit model.
     
     Description
     -----------
