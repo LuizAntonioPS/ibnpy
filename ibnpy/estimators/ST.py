@@ -13,7 +13,6 @@ import networkx as nx
 from pgmpy.estimators import StructureEstimator, HillClimbSearch
 from ibnpy.estimators import CITests
 from ibnpy.estimators.UndirectedTreeSearch import UndirectedTreeSearch
-from pgmpy.estimators.CITests import chi_square, pearsonr, independence_match
 
 class ST(StructureEstimator):
     def __init__(self,
@@ -64,8 +63,9 @@ class ST(StructureEstimator):
         skeleton = UndirectedTreeSearch(self.data).estimate(show_progress=False)
         
         ## Selecting candidate parents
-        graph = nx.complete_graph(n=nodes, create_using=nx.Graph)
-        for (u, v) in graph.edges():
+        graph = nx.complete_graph(n=nodes, create_using=nx.DiGraph)
+        graph_edges = list(graph.edges()).copy()
+        for (u, v) in graph_edges:
             ## Simple CI test
             aux = 3
             if not ci_test(
@@ -122,32 +122,32 @@ class ST(StructureEstimator):
     
     
     def _separating_set_ci_test(self, u, v, graph, ci_test, old_data):
-        lim_neighbors = 0
-        separating_set = ()
+        lim_neighbors = 1
+        separating_nodes = ()
         while not all(
             [len(list(graph.neighbors(var))) < lim_neighbors for var in (u, v)]
         ):
-            for separating_set in chain(
+            for nodes_set in chain(
                 combinations(set(graph.neighbors(u)) - set([v]), lim_neighbors),
                 #combinations(set(graph.neighbors(v)) - set([u]), lim_neighbors),
             ):
                 if ci_test(
                     X=u,
                     Y=v,
-                    Z=separating_set,
+                    Z=nodes_set,
                     data=old_data,
                     significance=self.significance
                 ) and ci_test(
                     X=u,
                     Y=v,
-                    Z=separating_set,
+                    Z=nodes_set,
                     data=self.data,
                     significance=self.significance
                 ) :
-                    separating_set = separating_set
+                    separating_nodes = nodes_set
                     break
             
-            if not len(separating_set) == 0:
+            if not len(separating_nodes) == 0:
                 break
             
             if lim_neighbors >= self.max_cond_vars:
@@ -159,7 +159,7 @@ class ST(StructureEstimator):
         #if not len(separating_set) == 0:
             #print('==========> SEPARATING SET', separating_set)
             
-        return not len(separating_set) == 0
+        return not len(separating_nodes) == 0
              
     
     def _heuristicIND(self, data, X, Y, skeleton, current_dag, significance=0.9):

@@ -16,7 +16,7 @@ A = incremental_structure_learning.fit(df, estimator='st')
 
 A.edges()
 
-# %% qualquer coisa
+# %%
 import numpy as np
 import pandas as pd
 from ibnpy.estimators.ST import ST

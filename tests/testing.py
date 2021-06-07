@@ -1,9 +1,19 @@
-import bnlearn
-G=bnlearn.import_DAG('alarm', CPD=True)
-df = bnlearn.sampling(G, n=1000)
-
+from ibnpy.utils import BayesianModelGenerator, InstanceUtils
 from ibnpy import incremental_structure_learning
+from ibnpy.utils import DAGDesigner
 
-A = incremental_structure_learning.fit(df, estimator='st', step_length=100, verbose=4)
+model = BayesianModelGenerator.load_model('cancer')
+df = InstanceUtils.sampling(model, 100000)
 
-print(A.edges())
+A = incremental_structure_learning.fit(df, estimator='st', start_dag='empty', verbose=3, step_length=1000)
+#print(A.edges())
+DAGDesigner.plot(A)
+
+#A = incremental_structure_learning.fit(df, estimator='st', start_dag='empty', verbose=3, step_length=100)
+#DAGDesigner.plot(A)
+#B = incremental_structure_learning.fit(df, estimator='st', start_dag='empty', verbose=3, step_length=1000)
+#DAGDesigner.plot(B)
+#C = incremental_structure_learning.fit(df, estimator='st', start_dag='fully_connected', verbose=3, step_length=100)
+#DAGDesigner.plot(C)
+#D = incremental_structure_learning.fit(df, estimator='st', start_dag='fully_connected', verbose=3, step_length=1000)
+#DAGDesigner.plot(D)

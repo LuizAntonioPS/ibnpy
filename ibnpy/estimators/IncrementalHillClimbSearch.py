@@ -34,7 +34,7 @@ class IncrementalHillClimbSearch(StructureEstimator):
         self,
         new_data=None,
         current_dag=None,
-        score=None,
+        scoring_method=None,
         n_jobs=-1,
         verbose=3
     ):

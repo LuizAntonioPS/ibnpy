@@ -89,7 +89,7 @@ def info_chi(X, Y, Z, data, boolean=True, significance=0.9):
         )
         
     # Step 2: Calc 2NMI using G_test
-    chi, _, _ = g_sq(X, Y, Z, data, boolean=False)
+    chi, p_value, dof = g_sq(X, Y, Z, data, boolean=False)
     
     # Step 3: Calc Chi Square Critical Value
     p = significance
@@ -100,12 +100,14 @@ def info_chi(X, Y, Z, data, boolean=True, significance=0.9):
     critical_value = _chi_square_critical_value(p, dof)
     
     # Step 4: Calc InfoChi
-    infochi = chi - critical_value
-        
+    infochi = chi - critical_value   
+
     if boolean:
         return infochi <= 0
     else:
         return infochi, chi, critical_value
+    
+    #return chi_square(X, Y, Z, data, boolean=boolean, significance_level=1-significance)
     
 # %% testing
 #import bnlearn

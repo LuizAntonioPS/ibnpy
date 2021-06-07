@@ -6,6 +6,8 @@ Created on Tue Apr 27 15:46:33 2021
 """
 import pandas as pd
 from ibnpy.utils.InstanceUtils import batch_generator
+from ibnpy.utils import BayesianModelGenerator
+from ibnpy.helpers import structural_diff
 from pgmpy.estimators import BDeuScore, K2Score, BicScore
 from pgmpy.base import DAG
 import time
@@ -14,7 +16,7 @@ def fit(df,
         estimator='ihcs',
         step_length=100,
         start_dag=None,
-        data_order='random',
+        data_order=None,
         max_indegree=None,
         epsilon=1e-4,
         scoretype='bic',
@@ -23,6 +25,7 @@ def fit(df,
         nrss=1e6,
         max_iter=1e6,
         max_cond_vars=1e6,
+        distance_measure='euclidean',
         verbose=3):
     """Online structure learning fit model.
     
@@ -58,15 +61,28 @@ def fit(df,
     """
     
     # Step 1.2: Check the start_dag
-    if start_dag is None:
-        start_dag = DAG()
-        start_dag.add_nodes_from(df.columns)
-    elif not isinstance(start_dag, DAG) or not set(start_dag.nodes()) == set(
-        df.columns
-    ):
-        raise ValueError(
-            "'start_dag' should be a DAG with the same variables as the data set, or 'None'."
-        )
+    if not isinstance(start_dag, DAG):
+        if start_dag == 'empty' or start_dag is None:
+            start_dag = BayesianModelGenerator.empty_dag(df)
+        elif start_dag == 'fully_connected':
+            start_dag = BayesianModelGenerator.fully_connected_dag(df)
+        elif start_dag == 'random':
+            start_dag = BayesianModelGenerator.random_dag(df)
+        elif start_dag == 'standard':
+            start_dag = BayesianModelGenerator.standard_dag(df)
+        elif start_dag == 'random_standard':
+            start_dag = BayesianModelGenerator.random_standard_dag(df)
+        else:
+            raise ValueError(
+                "'start_dag' should have a valid value."
+            )
+    else:
+        if not set(start_dag.nodes()) == set(
+            df.columns
+        ):
+            raise ValueError(
+                "'start_dag' should be a DAG with the same variables as the data set, or 'None'."
+            )
     
     config = {}
     config['estimator'] = estimator
@@ -82,6 +98,7 @@ def fit(df,
     config['max_iter'] = max_iter
     config['max_cond_vars'] = max_cond_vars
     config['verbose'] = verbose
+    config['distance_measure'] = distance_measure
         
     if config['estimator']=='st':
         est = _st(significance=config['significance'],
@@ -97,20 +114,23 @@ def fit(df,
                     max_iter=config['max_iter'])
     
     current_dag = config['start_dag']
-    
-    # Generating batchs #TODO falta data_order
+       
+    # Generating batchs
     generator = batch_generator(data=df,
                                 step_length=config['step_length'],
-                                data_order=config['data_order'])
+                                data_order=config['data_order'],
+                                distance_measure=config['distance_measure'])
     training_batchs = next(generator)
     batch_size = training_batchs.shape[0]
     
+    tt = 0
+    true_dag = BayesianModelGenerator.standard_dag(df)
     # Incremental process
     for i in range(batch_size):
         
         t = time.process_time()
         
-        batch = pd.DataFrame(training_batchs[i, :, :], columns=df.columns, dtype=float)
+        batch = pd.DataFrame(training_batchs[i, :, :], columns=df.columns, dtype=int)
         
         # Constructing the score method
         scoring_method = _SetScoringType(batch, config['scoretype'])
@@ -122,8 +142,16 @@ def fit(df,
                                    verbose=config['verbose'])
         
         elapsed_time = time.process_time()-t
+        tt = tt + elapsed_time
         
-        if verbose>=3: print('[ibnpy] >Epoch %s/%s [===] %ss' %(i+1, batch_size, elapsed_time))
+        if verbose==2: print('[ibnpy]> Epoch %s/%s [===] %ss' %(i+1, batch_size, elapsed_time))
+        elif verbose==3:
+            _f1, _auc, _bsf = structural_diff.structural_diff_scores(true_dag, current_dag)
+            print('[ibnpy]> Epoch %s/%s [===] F1=%s AUC=%s BSF=%s %ss' %(i+1, batch_size, round(_f1, 3), round(_auc,3), round(_bsf, 3), round(elapsed_time, 3)))
+        
+    
+    _f1, _auc, _bsf = structural_diff.structural_diff_scores(true_dag, current_dag)
+    if verbose>=2: print('[ibnpy]> Completed Learning [===] F1=%s AUC=%s BSF=%s %ss' %(round(_f1, 3), round(_auc,3), round(_bsf, 3), round(tt, 3)))
     
     return current_dag
 
