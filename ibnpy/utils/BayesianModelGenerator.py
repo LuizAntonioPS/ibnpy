@@ -138,7 +138,8 @@ def load_model(model_name):
         "sangiovese": "",
         "mehra": "",
     }
-
+    
+    model_name = model_name.lower()
     if model_name not in filenames.keys():
         raise ValueError("dataset should be one of the options")
     if filenames[model_name] == "":

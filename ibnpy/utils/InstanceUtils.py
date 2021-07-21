@@ -24,15 +24,18 @@ def _append_score(df, measure='cityblock'):
 
 def _sorter(df, data_order=None, distance_measure='cityblock'):
     if not data_order is None:
-        df = _append_score(df, measure=distance_measure)
+        _df = df.copy()
+        _df = _append_score(_df, measure=distance_measure)
         ascending = data_order == 'ascending'
-        df = df.sort_values(by=['score'], ascending=ascending)
-        df = df.drop(columns=['score'])
+        _df = _df.sort_values(by=['score'], ascending=ascending)
+        _df = _df.drop(columns=['score'])
+        df = _df.copy()
     return df
 
     
 def batch_generator(data,
                     data_order=None,
+                    data_seed=None,
                     features=None,
                     classes=None,
                     batch_size=None,
@@ -72,6 +75,8 @@ def batch_generator(data,
             # This points somewhere into the training-data.
             idx = 0
             if len(x) - step_length != 0:
+                if not data_seed is None:
+                    np.random.seed(data_seed+i)
                 idx = np.random.randint(len(x) - step_length)
             
             # Copy the sequences of data starting at this index.
